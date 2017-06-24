@@ -20,18 +20,75 @@
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
-	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
+	// TODO: Set the number of particles. Initialize all particles 
+        // to first position (based on estimates of x, y, theta and 
+        // their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
-	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
+
+    num_particles = 100;
+
+    std::default_random_engine gen;
+
+    std::normal_distribution<double> N_x(x, std[0]);
+    std::normal_distribution<double> N_y(y, std[1]);
+    std::normal_distribution<double> N_theta(theta, std[2]);
+
+    for (int i=0; i<num_particles; i++) {
+        Particle particle;
+        particle.id = i;
+        particle.x = N_x(gen);
+        particle.y = N_y(gen);
+        particle.theta = N_theta(gen);
+        particle.weight = 1;
+        
+        particle.push_back(particle);
+        weights.push_back(1);
+    }
+
+    is_initialized = true;
 
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	// TODO: Add measurements to each particle and add random Gaussian noise.
-	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
-	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
-	//  http://www.cplusplus.com/reference/random/default_random_engine/
+	// NOTE: When adding noise you may find std::normal_distribution and 
+        // std::default_random_engine useful.
+	// http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
+	// http://www.cplusplus.com/reference/random/default_random_engine/
+
+    default_random_engine gen;
+
+    for (int i = 0; i < num_particles; i++) {
+        double new_x;
+        double new_y;
+        double new_theta;
+
+        if (yaw_rate == 0) {
+
+            new_x = particles[i].x + velocity*delta_t*cos(particles[i].theta);
+            new_y = particles[i].y + velocity*delta_t*sin(particles[i].theta);
+            new_theta = particles[i].theta
+            
+        } else {
+
+            new_x = particles[i].x + velocity/yaw_rate*(
+                sin(particles[i].theta + yaw_rate*delta_t)-sin(FINISH));
+            new_y = particles[i].y + velocity/yaw_rate*(
+                cos(particles[i].theta)- cos(FINISH);
+            new_theta = particles[i].theta + yaw_rate*delta_t;
+
+        }
+
+        normal_distribution<double> N_x(new_x, std_pos[0]);
+        normal_distribution<double> N_y(new_y, std_pos[1]);
+        normal_distribution<double> N_theta(new_theta, std_pos[2]);
+        
+        particles[i].x = N_x(gen);
+        particles[i].y = N_y(gen);
+        particles[i].theta = N_theta(gen);
+    }
+
+   
 
 }
 
