@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <iterator>
+#include <array>
 
 #include "particle_filter.h"
 
@@ -25,7 +26,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
         // their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 
-    num_particles = 100;
+    num_particles = 1000;
 
     std::default_random_engine gen;
 
@@ -92,7 +93,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+void ParticleFilter::dataAssociation(std::vector<Particle> predicted, std::vector<LandmarkObs>& observations) {
 	// TODO: Find the predicted measurement that is closest to each observed 
 	//       measurement and assign the observed measurement to this particular 
 	//       landmark.
@@ -100,13 +101,13 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//       probably find it useful to implement this method and use it as a 
 	//       helper during the updateWeights phase.
 
-        float min_x, min_y;
+        float min_delta_x, min_delta_y;
         float dist, min_dist;
         LandmarkObs closest;
         float x_pred, y_pred;
 	float sense_x, sense_y;
-        float x_t, y_t;
-        //double theta;
+        float x_diff, y_diff;
+        float gauss_norm, exponent;
 
 	for (int i = 0; i < predicted.size(); i++) {
 	    int association; 
@@ -116,20 +117,26 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	    y_pred = predicted[i].y;
 	  
 	    for(int j = 0; j < observations.size(); j++) {
-	        x_t = x_pred - observations[i].x;
-	        y_t = y_pred - observations[i].y;
+	        x_diff = x_pred - observations[i].x;
+	        y_diff = y_pred - observations[i].y;
 	     	//sense_x = x_pred*cos(theta) - y_pred*sin(theta) + x_t;
 	        //sense_y = x_pred*sin(theta) + y_pred*cos(theta) + y_t;
 	   
-	        dist = sqrt((x_t*x_t + y_t*y_t));
+	        dist = sqrt((x_diff*x_diff + y_diff*y_diff));
 	        if (dist < min_dist) {
 	            min_dist = dist;
-	            //min_x = sense_x;
-	            //min_y = sense_y;
-	            closest = observations[i];
+	            min_delta_x = x_diff;
+		    min_delta_y = y_diff;
 	        }
 	    }
-	    predicted[i] = closest;
+
+	    // calculate normalization term
+	    gauss_norm= (1/(2 * 3.14 * 0.1 * 0.1)); // 0.1 = sig x and sig y
+	    // calculate exponent
+	    exponent= ((pow(min_delta_x,2))/(2*pow(0.1,2)) 
+		     + (pow(min_delta_y,2))/(2*pow(0.1,2)));
+	    //calculate weight using normalization terms and exponent
+	    predicted[i].weight = gauss_norm * exp(-exponent);
 
 	}
 
@@ -156,7 +163,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         double theta;
 	Map::single_landmark_s l_mark;
 
-	//dataAssociation(particles, observations);
+	dataAssociation(particles, observations);
 	std::vector<Map::single_landmark_s> lm_list = map_landmarks.landmark_list;
 
 	for (int i = 0; i < num_particles; i++) {
@@ -178,8 +185,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	    particles[i] = SetAssociations(particles[i], associations, 
 	                                   sense_x, sense_y);
 	    
-	    //particles[i].weight = 
-	    
 	}
 	
 }
@@ -189,7 +194,22 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 	
-	//std::discrete_distribution<> d(particles);
+        std::random_device rd;
+	std::mt19937 gen(rd());
+	std::discrete_distribution<int> d(weights.begin(), weights.end()); 
+	
+        int particle_index;
+    	Particle sampled_particle;    
+
+	for(int n=0; n<num_particles; ++n) {
+	    particle_index = d(gen); 
+	    sampled_particle = particles[particle_index];
+            particles[n].x = sampled_particle.x;
+	    particles[n].y = sampled_particle.y;
+	    particles[n].theta = sampled_particle.theta;
+	    particles[n].weight = sampled_particle.weight;	
+            weights[n] = sampled_particle.weight;
+        }
 
 }
 
