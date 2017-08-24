@@ -67,14 +67,14 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
             new_x = particles[i].x + velocity*delta_t*cos(particles[i].theta);
             new_y = particles[i].y + velocity*delta_t*sin(particles[i].theta);
-            new_theta = particles[i].theta
+            new_theta = particles[i].theta;
             
         } else {
 
             new_x = particles[i].x + velocity/yaw_rate*(
-                sin(particles[i].theta + yaw_rate*delta_t)-sin(FINISH));
+                sin(particles[i].theta + yaw_rate*delta_t)-sin(particles[i].theta));
             new_y = particles[i].y + velocity/yaw_rate*(
-                cos(particles[i].theta)- cos(FINISH);
+                cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
             new_theta = particles[i].theta + yaw_rate*delta_t;
 
         }
@@ -100,31 +100,36 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//       probably find it useful to implement this method and use it as a 
 	//       helper during the updateWeights phase.
 
-    float min_x, min_y;
-    float min_dist;
-	for (int i = 0; i < predicted.length(); i++) {
+        float min_x, min_y;
+        float dist, min_dist;
+        LandmarkObs closest;
+        float x_pred, y_pred;
+	float sense_x, sense_y;
+        float x_t, y_t;
+        //double theta;
+
+	for (int i = 0; i < predicted.size(); i++) {
 	    int association; 
 	    min_dist = NAN;
-	    theta = predicted[i].theta;
-	    x = predicted[i].x;
-	    y = predicted[i].y;
-	    
-	    closest = NULL;
-	    for(int j = 0; j < observations.length(); j++) {
-	        x_t = x - observations[i].x;
-	        y_t = y - observations[i].y;
-	     	sense_x = x*cos(theta) - y*sin(theta) + x_t;
-	        sense_y = x*sin(theta) + y*cos(theta) + y_t;
+	    //theta = predicted[i].theta;
+	    x_pred = predicted[i].x;
+	    y_pred = predicted[i].y;
+	  
+	    for(int j = 0; j < observations.size(); j++) {
+	        x_t = x_pred - observations[i].x;
+	        y_t = y_pred - observations[i].y;
+	     	//sense_x = x_pred*cos(theta) - y_pred*sin(theta) + x_t;
+	        //sense_y = x_pred*sin(theta) + y_pred*cos(theta) + y_t;
 	   
-	        dist = sqrt((x_t)^2 + (y_t)^2);
+	        dist = sqrt((x_t*x_t + y_t*y_t));
 	        if (dist < min_dist) {
 	            min_dist = dist;
-	            min_x = sense_x;
-	            min_y = sense_y;
+	            //min_x = sense_x;
+	            //min_y = sense_y;
 	            closest = observations[i];
 	        }
 	    }
-	    predicted[i] = closest
+	    predicted[i] = closest;
 
 	}
 
@@ -147,23 +152,27 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
 	
 	Particle predicted;
-	
-	dataAssociation(map_landmarks, observations);
-	
+	float x, y;
+        double theta;
+	Map::single_landmark_s l_mark;
+
+	//dataAssociation(particles, observations);
+	std::vector<Map::single_landmark_s> lm_list = map_landmarks.landmark_list;
+
 	for (int i = 0; i < num_particles; i++) {
-        x = particles[i].x;
+            x = particles[i].x;
 	    y = particles[i].y;
 	    theta = particles[i].theta;
 	    
 	    std::vector<int> associations;
 	    std::vector<double> sense_x;
 	    std::vector<double> sense_y;
-	    
-	    for (int j = 0; j < map_landmarks.length(); j++) {
-	        l_mark = map_landmark[j];
-	        associations.push_back(l_mark[j].id);
-	        sense_x.push_back(l_mark.x); // Right?
-	        sense_y.push_back(l_mark.y); 
+
+	    for (int j = 0; j < lm_list.size(); j++) {
+	        l_mark = lm_list[j];
+	        associations.push_back(l_mark.id_i);
+	        sense_x.push_back(l_mark.x_f); // Right?
+	        sense_y.push_back(l_mark.y_f); 
 	              
 	    }
 	    particles[i] = SetAssociations(particles[i], associations, 
@@ -180,7 +189,7 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 	
-	std::discrete_distribution<> d(particles);
+	//std::discrete_distribution<> d(particles);
 
 }
 
